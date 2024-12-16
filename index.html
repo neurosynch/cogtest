@@ -4,42 +4,76 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COG Test</title>
-    <script src="jspsych.js"></script>
-    <link rel="stylesheet" href="jspsych.css">
+
+    <!-- Inline jsPsych CSS -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            margin-top: 10%;
+        }
+        .jspsych-display-element {
+            font-size: 24px;
+            color: black;
+        }
+    </style>
 </head>
 <body>
+    <!-- Experiment Content -->
     <script>
-        // Initialize jsPsych
-        var jsPsych = initJsPsych({
-            on_finish: function() {
-                jsPsych.data.displayData();
-            }
-        });
+        // Minimal jsPsych-like implementation (no external files needed)
+        (function(){
+            // Simple jsPsych-like framework
+            const jsPsych = {
+                run: function(timeline) {
+                    let index = 0;  // Track trial number
+                    const display = document.createElement('div');
+                    display.className = 'jspsych-display-element';
+                    document.body.appendChild(display);
 
-        // Timeline for the experiment
-        var timeline = [];
+                    function showNext() {
+                        if (index < timeline.length) {
+                            display.innerHTML = timeline[index].stimulus;
 
-        // Instructions
-        var instructions = {
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: "<p>Welcome to the COG Test!</p>" +
-                      "<p>Press 'R' for RED or 'B' for BLUE.</p>" +
-                      "<p>Press any key to begin.</p>",
-        };
-        timeline.push(instructions);
+                            // Wait for the user to respond
+                            document.body.onkeydown = (e) => {
+                                if (timeline[index].choices.includes(e.key)) {
+                                    index++;
+                                    showNext();
+                                }
+                            };
+                        } else {
+                            display.innerHTML = "<p>Experiment Complete!</p>";
+                        }
+                    }
+                    showNext();
+                }
+            };
 
-        // Cognitive trial example
-        var cog_trial = {
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: '<p style="color: red; font-size: 48px;">BLUE</p>',
-            choices: ['r', 'b'],
-            prompt: "<p>What color is the word?</p>",
-            data: { correct_response: 'r' }
-        };
-        timeline.push(cog_trial);
+            // Define a simple timeline for the cognitive test
+            const timeline = [
+                { 
+                    stimulus: "<p>Welcome to the COG Test!</p><p>Press any key to begin.</p>", 
+                    choices: ['r', 'b', ' ']
+                },
+                { 
+                    stimulus: "<p style='color:red; font-size:48px;'>BLUE</p><p>Press 'R' for RED or 'B' for BLUE.</p>", 
+                    choices: ['r', 'b'] 
+                },
+                { 
+                    stimulus: "<p style='color:blue; font-size:48px;'>RED</p><p>Press 'R' for RED or 'B' for BLUE.</p>", 
+                    choices: ['r', 'b'] 
+                },
+                { 
+                    stimulus: "<p>Thank you for participating!</p>", 
+                    choices: [' ']
+                }
+            ];
 
-        // Run the task
-        jsPsych.run(timeline);
+            // Run the timeline
+            jsPsych.run(timeline);
+        })();
     </script>
 </body>
 </html>
