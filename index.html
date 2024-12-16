@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COG Test</title>
+    <script src="jspsych.js"></script>
+    <link rel="stylesheet" href="jspsych.css">
+</head>
+<body>
+    <script>
+        // Initialize jsPsych
+        var jsPsych = initJsPsych({
+            on_finish: function() {
+                jsPsych.data.displayData();
+            }
+        });
+
+        // Timeline for the experiment
+        var timeline = [];
+
+        // Instructions
+        var instructions = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "<p>Welcome to the COG Test!</p>" +
+                      "<p>Press 'R' for RED or 'B' for BLUE.</p>" +
+                      "<p>Press any key to begin.</p>",
+        };
+        timeline.push(instructions);
+
+        // Cognitive trial example
+        var cog_trial = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: '<p style="color: red; font-size: 48px;">BLUE</p>',
+            choices: ['r', 'b'],
+            prompt: "<p>What color is the word?</p>",
+            data: { correct_response: 'r' }
+        };
+        timeline.push(cog_trial);
+
+        // Run the task
+        jsPsych.run(timeline);
+    </script>
+</body>
+</html>
