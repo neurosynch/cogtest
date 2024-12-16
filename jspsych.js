@@ -1,1 +1,1 @@
-Cannot find "/dist/jspsych.js" in jspsych@7.3.3
+Cannot find "/dist/jspsych.umd.js" in jspsych@7.3.3
