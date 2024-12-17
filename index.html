@@ -5,18 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>N-Back Test</title>
     <!-- Local jsPsych -->
-    <script src="jspsych.js"></script>
+    <script src="index.browser.js"></script>
     <link rel="stylesheet" href="jspsych.css">
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
+            background-color: #f4f4f4;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f4f4f4;
+            margin: 0;
         }
         .jspsych-display-element {
             font-size: 48px;
@@ -29,7 +28,9 @@
         // Initialize jsPsych
         var jsPsych = initJsPsych({
             on_finish: function() {
-                jsPsych.data.displayData(); // Display results at the end
+                // Save data as CSV and display it
+                jsPsych.data.get().localSave('csv', 'nback_results.csv');
+                jsPsych.data.displayData();
             }
         });
 
@@ -41,7 +42,7 @@
             type: jsPsychHtmlKeyboardResponse,
             stimulus: `
                 <p><strong>N-Back Test</strong></p>
-                <p>You will see a series of letters. Press the 'F' key if the current letter matches the one presented just before (1-back).</p>
+                <p>You will see a series of letters. Press the <strong>'F'</strong> key if the current letter matches the one presented just before (1-back).</p>
                 <p>Press any key to begin.</p>
             `
         };
@@ -68,15 +69,16 @@
                 type: jsPsychHtmlKeyboardResponse,
                 stimulus: `<p>${sequence[i]}</p>`,
                 choices: ['f'],
+                trial_duration: 1000, // 1 second per trial
+                post_trial_gap: 500, // 0.5-second gap
                 data: {
-                    correct_response: (i > 0 && sequence[i] === sequence[i - 1]) ? 'f' : null, // Correct only if match
-                    trial_number: i
+                    trial_number: i,
+                    presented_letter: sequence[i],
+                    correct_response: (i > 0 && sequence[i] === sequence[i - 1]) ? 'f' : null
                 },
                 on_finish: function(data) {
-                    data.correct = data.response === data.correct_response;
-                },
-                trial_duration: 1000, // 1-second per trial
-                post_trial_gap: 500 // 0.5-second gap
+                    data.correct = data.response === data.correct_response; // Record correctness
+                }
             };
             timeline.push(trial);
         }
@@ -84,7 +86,11 @@
         // Thank you screen
         var end_message = {
             type: jsPsychHtmlKeyboardResponse,
-            stimulus: "<p>Thank you for participating!</p><p>Press any key to see your results.</p>"
+            stimulus: `
+                <p>Thank you for participating!</p>
+                <p>Your results have been saved as a CSV file.</p>
+                <p>Press any key to finish.</p>
+            `
         };
         timeline.push(end_message);
 
