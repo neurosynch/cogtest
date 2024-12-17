@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N-Back Memory Test</title>
+
+    <!-- jsPsych CDN -->
+    <script src="https://unpkg.com/jspsych@7.3.4"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.3"></script>
+    <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet" type="text/css"/>
+
+    <!-- Data Collection -->
+    <script src="../common/js/data-collection.js"></script>
+
+    <style>
+        .jspsych-content { 
+            max-width: 800px;
+        }
+        .stimulus {
+            font-size: 48px;
+            font-weight: bold;
+        }
+        .instruction {
+            font-size: 20px;
+            color: #666;
+        }
+        .score {
+            font-size: 24px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Initialize data collector
+        const dataCollector = new DataCollector({
+            testType: 'nback_memory'
+        });
+
+        // Initialize jsPsych
+        const jsPsych = initJsPsych({
+            on_finish: function(data) {
+                // Calculate final scores
+                const trials = data.filter({test_type: 'nback'});
+                const accuracy = trials.filter({correct: true}).count() / trials.count();
+                const rt = trials.select('rt').mean();
+                
+                // Save with additional metrics
+                dataCollector.saveData({
+                    testData: data.json(),
+                    summary: {
+                        accuracy: Math.round(accuracy * 100),
+                        averageRT: Math.round(rt),
+                        totalTrials: trials.count()
+                    }
+                });
+            }
+        });
+
+        // Create N-back trials
+        function createNBackTest() {
+            const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+            const trials = [];
+            const n_trials = 20;
+            const n_back = 2; // 2-back test
+            
+            // Generate sequence
+            for (let i = 0; i < n_trials; i++) {
+                let letter;
+                if (i >= n_back && Math.random() < 0.3) { // 30% chance of match
+                    letter = trials[i-n_back].letter;
+                } else {
+                    letter = letters[Math.floor(Math.random() * letters.length)];
+                }
+                trials.push({
+                    letter: letter,
+                    is_match: i >= n_back ? letter === trials[i-n_back].letter : false
+                });
+            }
+
+            const test_trial = {
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: function() {
+                    return `<div class="stimulus">${jsPsych.timelineVariable('letter')}</div>`;
+                },
+                choices: ['f', 'j'],
+                trial_duration: 2000,
+                post_trial_gap: 500,
+                data: function() {
+                    return {
+                        test_type: 'nback',
+                        letter: jsPsych.timelineVariable('letter'),
+                        is_match: jsPsych.timelineVariable('is_match'),
+                        correct_response: jsPsych.timelineVariable('is_match') ? 'f' : 'j'
+                    };
+                },
+                on_finish: function(data) {
+                    data.correct = data.response === data.correct_response;
+                }
+            };
+
+            return {
+                timeline: [
+                    {
+                        type: jsPsychHtmlKeyboardResponse,
+                        stimulus: `
+                            <h2>N-Back Memory Test</h2>
+                            <p class="instruction">You will see a sequence of letters.</p>
+                            <p class="instruction">Press <strong>F</strong> if the current letter matches the letter from 2 steps ago.</p>
+                            <p class="instruction">Press <strong>J</strong> if it does not match.</p>
+                            <p class="instruction">Press any key to begin.</p>
+                        `,
+                        choices: "ALL_KEYS"
+                    },
+                    {
+                        timeline: [test_trial],
+                        timeline_variables: trials
+                    }
+                ]
+            };
+        }
+
+        // Create timeline
+        const timeline = [
+            createNBackTest(),
+            {
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: function() {
+                    const data = jsPsych.data.get().filter({test_type: 'nback'});
+                    const correct_trials = data.filter({correct: true}).count();
+                    const accuracy = Math.round((correct_trials / data.count()) * 100);
+                    const rt = Math.round(data.select('rt').mean());
+                    
+                    return `
+                        <h2>Test Complete!</h2>
+                        <div class="score">
+                            <p>Accuracy: ${accuracy}%</p>
+                            <p>Average Response Time: ${rt}ms</p>
+                        </div>
+                        <p>Your results have been saved.</p>
+                        <p><a href="../" style="color: #2196F3;">Return to Test Selection</a></p>
+                    `;
+                },
+                choices: ['f']
+            }
+        ];
+
+        // Run the experiment
+        jsPsych.run(timeline);
+    </script>
+</body>
+</html>
