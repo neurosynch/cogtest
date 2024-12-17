@@ -3,191 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VAT Cognitive Effects</title>
-
-    <script src="https://unpkg.com/jspsych@7.3.4"></script>
-    <script src="https://unpkg.com/@jspsych/plugin-survey-likert@1.1.3"></script>
-    <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.3"></script>
-    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
-    <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@1.1.3"></script>
-    <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet" type="text/css"/>
-
+    <title>Cognitive Tests</title>
     <style>
-        .jspsych-content { max-width: 800px; }
-        .stimulus { font-size: 48px; }
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 40px 20px;
+            margin-bottom: 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .test-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .test-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+
+        .button:hover {
+            background: var(--secondary-color);
+        }
+
+        .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            .test-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
-    <script>
-        const jsPsych = initJsPsych({
-            on_finish: function() {
-                jsPsych.data.displayData();
-                jsPsych.data.get().localSave('csv', 'vat_cognitive_results.csv');
-            }
-        });
+    <div class="container">
+        <div class="hero">
+            <h1>Cognitive Tests</h1>
+            <p>Choose a test format that works best for you:</p>
+        </div>
 
-        // Reaction Time Test
-        function createReactionTest() {
-            const rt_test = {
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: '<div class="stimulus">●</div>',
-                choices: ['space'],
-                trial_duration: function() {
-                    return Math.floor(Math.random() * 1500) + 1000;
-                },
-                data: {test_type: 'reaction_time'},
-                on_finish: function(data) {
-                    data.correct = data.rt !== null;
-                }
-            };
-
-            return {
-                timeline: [
-                    {
-                        type: jsPsychHtmlKeyboardResponse,
-                        stimulus: 'Press spacebar as quickly as possible when you see a circle.<br>Press any key to start.',
-                        choices: "ALL_KEYS"
-                    },
-                    {
-                        timeline: [rt_test],
-                        repetitions: 3
-                    }
-                ]
-            };
-        }
-
-        // Working Memory Test (2-back)
-        function createMemoryTest() {
-            const letters = ['A', 'B', 'C', 'D', 'E'];
-            const trials = [];
-            const n_trials = 10;
-            
-            for (let i = 0; i < n_trials; i++) {
-                let letter;
-                if (i >= 2 && Math.random() < 0.3) {
-                    letter = trials[i-2].letter; // 2-back match
-                } else {
-                    letter = letters[Math.floor(Math.random() * letters.length)];
-                }
-                trials.push({
-                    letter: letter,
-                    is_match: i >= 2 ? letter === trials[i-2].letter : false
-                });
-            }
-
-            const memory_trial = {
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: function() {
-                    return `<div class="stimulus">${jsPsych.timelineVariable('letter')}</div>`;
-                },
-                choices: ['f', 'j'],
-                trial_duration: 2000,
-                data: function() {
-                    return {
-                        test_type: 'memory',
-                        letter: jsPsych.timelineVariable('letter'),
-                        is_match: jsPsych.timelineVariable('is_match'),
-                        correct_response: jsPsych.timelineVariable('is_match') ? 'f' : 'j'
-                    };
-                },
-                on_finish: function(data) {
-                    data.correct = data.response === data.correct_response;
-                }
-            };
-
-            return {
-                timeline: [
-                    {
-                        type: jsPsychHtmlKeyboardResponse,
-                        stimulus: 'Press F if the letter matches the letter from 2 steps ago.<br>Press J if it does not match.<br>Press any key to start.',
-                        choices: "ALL_KEYS"
-                    },
-                    {
-                        timeline: [memory_trial],
-                        timeline_variables: trials
-                    }
-                ]
-            };
-        }
-
-        // Creativity/Association Test
-        const creativityTest = {
-            type: jsPsychSurveyText,
-            questions: [
-                {
-                    prompt: "List as many uses as you can think of for a brick (separated by commas):",
-                    name: "alt_uses"
-                },
-                {
-                    prompt: "What words come to mind when you think of 'ocean' (separated by commas):",
-                    name: "word_associations"
-                }
-            ],
-            preamble: "Quick creativity test - take 30 seconds per question:"
-        };
-
-        // Subjective Assessment
-        const subjectiveAssessment = {
-            type: jsPsychSurveyLikert,
-            preamble: "Rate your current experience:",
-            questions: [
-                {
-                    prompt: "Mental clarity",
-                    labels: ["Very Foggy", "Foggy", "Neutral", "Clear", "Very Clear"],
-                    name: "clarity"
-                },
-                {
-                    prompt: "Ability to focus",
-                    labels: ["Very Poor", "Poor", "Average", "Good", "Excellent"],
-                    name: "focus"
-                },
-                {
-                    prompt: "Distractibility",
-                    labels: ["Very High", "High", "Moderate", "Low", "Very Low"],
-                    name: "distraction"
-                },
-                {
-                    prompt: "Creative thinking",
-                    labels: ["Very Low", "Low", "Moderate", "High", "Very High"],
-                    name: "creativity"
-                },
-                {
-                    prompt: "Memory recall",
-                    labels: ["Very Poor", "Poor", "Average", "Good", "Excellent"],
-                    name: "memory"
-                }
-            ]
-        };
-
-        // Create timeline
-        const timeline = [];
-
-        // Pre-test instructions
-        timeline.push({
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: `
-                <h2>VAT Cognitive Assessment</h2>
-                <p>This brief assessment includes:</p>
+        <div class="test-grid">
+            <div class="test-card">
+                <div class="icon">📱</div>
+                <h2>Mobile Pattern Test</h2>
+                <p>Touch-optimized memory test</p>
                 <ul>
-                    <li>Reaction time test</li>
-                    <li>Memory test</li>
-                    <li>Creativity tasks</li>
-                    <li>Subjective questions</li>
+                    <li>Pattern memory</li>
+                    <li>Tap speed</li>
+                    <li>2-3 minutes</li>
                 </ul>
-                <p>Total time: ~5 minutes</p>
-                <p>Press any key to begin.</p>
-            `,
-            choices: "ALL_KEYS"
-        });
+                <a href="mobile/index.html" class="button">Start Mobile Test</a>
+            </div>
 
-        // Add tests to timeline
-        timeline.push(createReactionTest());
-        timeline.push(createMemoryTest());
-        timeline.push(creativityTest);
-        timeline.push(subjectiveAssessment);
+            <div class="test-card">
+                <div class="icon">💻</div>
+                <h2>N-Back Test</h2>
+                <p>Desktop memory training</p>
+                <ul>
+                    <li>Working memory</li>
+                    <li>Keyboard responses</li>
+                    <li>5 minutes</li>
+                </ul>
+                <a href="desktop/nback.html" class="button">Start N-Back</a>
+            </div>
 
-        // Run experiment
-        jsPsych.run(timeline);
-    </script>
+            <div class="test-card">
+                <div class="icon">⚡</div>
+                <h2>Quick Check</h2>
+                <p>Brief cognitive assessment</p>
+                <ul>
+                    <li>Basic memory</li>
+                    <li>Response time</li>
+                    <li>1 minute</li>
+                </ul>
+                <a href="quick/index.html" class="button">Start Quick Test</a>
+            </div>
+        </div>
+
+        <footer style="text-align: center; margin-top: 40px;">
+            <p><small>All tests save results automatically. For research purposes only.</small></p>
+        </footer>
+    </div><!-- Trigger GitHub Pages Rebuild -->
 </body>
 </html>
