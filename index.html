@@ -3,126 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>N-Back Test</title>
-    
-    <!-- Include the full version of jsPsych and required plugins -->
+    <title>VAT Cognitive Effects</title>
+
     <script src="https://unpkg.com/jspsych@7.3.4"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-likert@1.1.3"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.3"></script>
     <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
-    
-    <!-- Include the jsPsych stylesheet -->
-    <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet" type="text/css" />
-    
+    <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@1.1.3"></script>
+    <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet" type="text/css"/>
+
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .jspsych-display-element {
-            font-size: 48px;
-            text-align: center;
-        }
+        .jspsych-content { max-width: 800px; }
+        .stimulus { font-size: 48px; }
     </style>
 </head>
 <body>
     <script>
-        // Initialize jsPsych
         const jsPsych = initJsPsych({
             on_finish: function() {
-                // Save data as CSV and display it
-                jsPsych.data.get().localSave('csv', 'nback_results.csv');
                 jsPsych.data.displayData();
+                jsPsych.data.get().localSave('csv', 'vat_cognitive_results.csv');
             }
         });
 
-        // Define the timeline
+        // Reaction Time Test
+        function createReactionTest() {
+            const rt_test = {
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: '<div class="stimulus">●</div>',
+                choices: ['space'],
+                trial_duration: function() {
+                    return Math.floor(Math.random() * 1500) + 1000;
+                },
+                data: {test_type: 'reaction_time'},
+                on_finish: function(data) {
+                    data.correct = data.rt !== null;
+                }
+            };
+
+            return {
+                timeline: [
+                    {
+                        type: jsPsychHtmlKeyboardResponse,
+                        stimulus: 'Press spacebar as quickly as possible when you see a circle.<br>Press any key to start.',
+                        choices: "ALL_KEYS"
+                    },
+                    {
+                        timeline: [rt_test],
+                        repetitions: 3
+                    }
+                ]
+            };
+        }
+
+        // Working Memory Test (2-back)
+        function createMemoryTest() {
+            const letters = ['A', 'B', 'C', 'D', 'E'];
+            const trials = [];
+            const n_trials = 10;
+            
+            for (let i = 0; i < n_trials; i++) {
+                let letter;
+                if (i >= 2 && Math.random() < 0.3) {
+                    letter = trials[i-2].letter; // 2-back match
+                } else {
+                    letter = letters[Math.floor(Math.random() * letters.length)];
+                }
+                trials.push({
+                    letter: letter,
+                    is_match: i >= 2 ? letter === trials[i-2].letter : false
+                });
+            }
+
+            const memory_trial = {
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: function() {
+                    return `<div class="stimulus">${jsPsych.timelineVariable('letter')}</div>`;
+                },
+                choices: ['f', 'j'],
+                trial_duration: 2000,
+                data: function() {
+                    return {
+                        test_type: 'memory',
+                        letter: jsPsych.timelineVariable('letter'),
+                        is_match: jsPsych.timelineVariable('is_match'),
+                        correct_response: jsPsych.timelineVariable('is_match') ? 'f' : 'j'
+                    };
+                },
+                on_finish: function(data) {
+                    data.correct = data.response === data.correct_response;
+                }
+            };
+
+            return {
+                timeline: [
+                    {
+                        type: jsPsychHtmlKeyboardResponse,
+                        stimulus: 'Press F if the letter matches the letter from 2 steps ago.<br>Press J if it does not match.<br>Press any key to start.',
+                        choices: "ALL_KEYS"
+                    },
+                    {
+                        timeline: [memory_trial],
+                        timeline_variables: trials
+                    }
+                ]
+            };
+        }
+
+        // Creativity/Association Test
+        const creativityTest = {
+            type: jsPsychSurveyText,
+            questions: [
+                {
+                    prompt: "List as many uses as you can think of for a brick (separated by commas):",
+                    name: "alt_uses"
+                },
+                {
+                    prompt: "What words come to mind when you think of 'ocean' (separated by commas):",
+                    name: "word_associations"
+                }
+            ],
+            preamble: "Quick creativity test - take 30 seconds per question:"
+        };
+
+        // Subjective Assessment
+        const subjectiveAssessment = {
+            type: jsPsychSurveyLikert,
+            preamble: "Rate your current experience:",
+            questions: [
+                {
+                    prompt: "Mental clarity",
+                    labels: ["Very Foggy", "Foggy", "Neutral", "Clear", "Very Clear"],
+                    name: "clarity"
+                },
+                {
+                    prompt: "Ability to focus",
+                    labels: ["Very Poor", "Poor", "Average", "Good", "Excellent"],
+                    name: "focus"
+                },
+                {
+                    prompt: "Distractibility",
+                    labels: ["Very High", "High", "Moderate", "Low", "Very Low"],
+                    name: "distraction"
+                },
+                {
+                    prompt: "Creative thinking",
+                    labels: ["Very Low", "Low", "Moderate", "High", "Very High"],
+                    name: "creativity"
+                },
+                {
+                    prompt: "Memory recall",
+                    labels: ["Very Poor", "Poor", "Average", "Good", "Excellent"],
+                    name: "memory"
+                }
+            ]
+        };
+
+        // Create timeline
         const timeline = [];
 
-        // Instructions
-        const instructions = {
+        // Pre-test instructions
+        timeline.push({
             type: jsPsychHtmlKeyboardResponse,
             stimulus: `
-                <p><strong>N-Back Test</strong></p>
-                <p>You will see a series of letters. Press the <strong>'F'</strong> key if the current letter matches the one presented just before (1-back).</p>
+                <h2>VAT Cognitive Assessment</h2>
+                <p>This brief assessment includes:</p>
+                <ul>
+                    <li>Reaction time test</li>
+                    <li>Memory test</li>
+                    <li>Creativity tasks</li>
+                    <li>Subjective questions</li>
+                </ul>
+                <p>Total time: ~5 minutes</p>
                 <p>Press any key to begin.</p>
             `,
             choices: "ALL_KEYS"
-        };
-        timeline.push(instructions);
+        });
 
-        // Define N-Back trials
-        const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']; // Pool of letters
-        const sequence = [];
-        const n_trials = 20;
+        // Add tests to timeline
+        timeline.push(createReactionTest());
+        timeline.push(createMemoryTest());
+        timeline.push(creativityTest);
+        timeline.push(subjectiveAssessment);
 
-        // Generate letter sequence
-        for (let i = 0; i < n_trials; i++) {
-            if (i > 0 && Math.random() < 0.3) { // 30% chance the letter repeats (match)
-                sequence.push(sequence[i - 1]);
-            } else {
-                let new_letter;
-                do {
-                    new_letter = letters[Math.floor(Math.random() * letters.length)];
-                } while (i > 0 && new_letter === sequence[i - 1]); // Ensure no accidental matches
-                sequence.push(new_letter);
-            }
-        }
-
-        // Create trials
-        for (let i = 0; i < sequence.length; i++) {
-            const trial = {
-                type: jsPsychHtmlKeyboardResponse,
-                stimulus: `<p>${sequence[i]}</p>`,
-                choices: ['f', 'j'], // 'f' for match, 'j' for no match
-                trial_duration: 2000, // 2 seconds per trial
-                post_trial_gap: 500, // 0.5-second gap
-                data: {
-                    trial_number: i + 1,
-                    presented_letter: sequence[i],
-                    previous_letter: i > 0 ? sequence[i - 1] : null,
-                    is_match: i > 0 && sequence[i] === sequence[i - 1],
-                    correct_response: i > 0 && sequence[i] === sequence[i - 1] ? 'f' : 'j'
-                },
-                on_finish: function(data) {
-                    // Record if response was correct
-                    data.correct = data.response === data.correct_response;
-                    // Record if it was a miss (no response when should have responded)
-                    data.miss = data.is_match && data.response === null;
-                    // Record if it was a false alarm (responded when shouldn't have)
-                    data.false_alarm = !data.is_match && data.response === 'f';
-                }
-            };
-            timeline.push(trial);
-        }
-
-        // Add summary calculation
-        const summary = {
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: function() {
-                const data = jsPsych.data.get().filter({trial_number: {$exists: true}});
-                const correct_trials = data.filter({correct: true}).count();
-                const total_trials = data.count();
-                const accuracy = Math.round((correct_trials / total_trials) * 100);
-                const misses = data.filter({miss: true}).count();
-                const false_alarms = data.filter({false_alarm: true}).count();
-                
-                return `
-                    <p>Your Results:</p>
-                    <p>Accuracy: ${accuracy}%</p>
-                    <p>Misses: ${misses}</p>
-                    <p>False Alarms: ${false_alarms}</p>
-                    <p>Press any key to finish.</p>
-                `;
-            },
-            choices: "ALL_KEYS"
-        };
-        timeline.push(summary);
-
-        // Run the experiment
+        // Run experiment
         jsPsych.run(timeline);
     </script>
 </body>
