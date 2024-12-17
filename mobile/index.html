@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Pattern Test</title>
+
+    <!-- Use CDN versions -->
+    <script src="https://unpkg.com/jspsych@7.3.4"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.3"></script>
+    <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet" type="text/css"/>
+
+    <style>
+        .jspsych-content {
+            max-width: 95vw;
+        }
+
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px auto;
+            max-width: 300px;
+        }
+
+        .pattern-cell {
+            aspect-ratio: 1;
+            background: #f0f0f0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            touch-action: manipulation;
+            transition: background-color 0.2s;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .pattern-cell.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .tap-target {
+            width: 120px;
+            height: 120px;
+            background: #2196F3;
+            border-radius: 50%;
+            margin: 20px auto;
+            touch-action: manipulation;
+            transition: transform 0.1s;
+            cursor: pointer;
+        }
+
+        .tap-target:active {
+            transform: scale(0.95);
+        }
+
+        .jspsych-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 8px;
+        }
+
+        .jspsych-btn:hover {
+            background-color: #1976D2;
+        }
+
+        @media (max-width: 600px) {
+            .pattern-grid {
+                max-width: 100%;
+                gap: 5px;
+            }
+            
+            .pattern-cell {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Initialize jsPsych
+        const jsPsych = initJsPsych({
+            on_finish: function(data) {
+                // Log data for now, will implement saving later
+                console.log('Test finished!');
+                console.log(data.json());
+            },
+            show_progress_bar: true
+        });
+
+        // Pattern Memory Test
+        function createPatternTest() {
+            const gridSize = 9;
+            const pattern = Array(gridSize).fill(false);
+            
+            // Generate random pattern with 4 active cells
+            for(let i = 0; i < 4; i++) {
+                let index;
+                do {
+                    index = Math.floor(Math.random() * gridSize);
+                } while(pattern[index]);
+                pattern[index] = true;
+            }
+
+            const showPattern = {
+                type: jsPsychHtmlButtonResponse,
+                stimulus: function() {
+                    let grid = '<div class="pattern-grid">';
+                    for(let i = 0; i < gridSize; i++) {
+                        grid += `<div class="pattern-cell${pattern[i] ? ' active' : ''}">${i + 1}</div>`;
+                    }
+                    grid += '</div>';
+                    return grid;
+                },
+                choices: [],
+                trial_duration: 3000,
+                post_trial_gap: 500
+            };
+
+            const testPattern = {
+                type: jsPsychHtmlButtonResponse,
+                stimulus: function() {
+                    let grid = '<div class="pattern-grid">';
+                    for(let i = 0; i < gridSize; i++) {
+                        grid += `<div class="pattern-cell" data-index="${i}">${i + 1}</div>`;
+                    }
+                    grid += '</div>';
+                    return grid;
+                },
+                choices: ['Submit'],
+                on_load: function() {
+                    let selected = new Set();
+                    document.querySelectorAll('.pattern-cell').forEach(cell => {
+                        cell.addEventListener('click', function() {
+                            const index = parseInt(this.dataset.index);
+                            if (selected.has(index)) {
+                                selected.delete(index);
+                                this.classList.remove('active');
+                            } else if (selected.size < 4) {
+                                selected.add(index);
+                                this.classList.add('active');
+                            }
+                        });
+                    });
+                },
+                data: {
+                    correct_pattern: pattern,
+                    test_type: 'pattern_memory'
+                },
+                on_finish: function(data) {
+                    const selected = Array.from(document.querySelectorAll('.pattern-cell'))
+                        .map(cell => cell.classList.contains('active'));
+                    data.selected_pattern = selected;
+                    data.accuracy = selected.filter(
+                        (val, i) => val === pattern[i]
+                    ).length / pattern.filter(x => x).length;
+                }
+            };
+
+            return {
+                timeline: [
+                    {
+                        type: jsPsychHtmlButtonResponse,
+                        stimulus: `
+                            <h3>Pattern Memory Test</h3>
+                            <p>Remember which squares are highlighted.<br>
+                            Then tap to recreate the pattern.</p>
+                            <p>You'll have 3 seconds to memorize the pattern.</p>
+                        `,
+                        choices: ['Begin']
+                    },
+                    showPattern,
+                    testPattern
+                ]
+            };
+        }
+
+        // Tap Speed Test
+        function createTapTest() {
+            const tapTrial = {
+                type: jsPsychHtmlButtonResponse,
+                stimulus: '<div class="tap-target"></div>',
+                choices: ['Finish'],
+                trial_duration: 5000,
+                data: {test_type: 'tap_speed'},
+                on_load: function() {
+                    const target = document.querySelector('.tap-target');
+                    let taps = 0;
+                    const startTime = performance.now();
+                    
+                    target.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        taps++;
+                        this.style.transform = 'scale(0.95)';
+                        setTimeout(() => this.style.transform = 'scale(1)', 100);
+                    });
+
+                    setTimeout(() => {
+                        const endTime = performance.now();
+                        jsPsych.data.get().last(1).values()[0].taps = taps;
+                        jsPsych.data.get().last(1).values()[0].taps_per_second = 
+                            taps / ((endTime - startTime) / 1000);
+                    }, 5000);
+                }
+            };
+
+            return {
+                timeline: [
+                    {
+                        type: jsPsychHtmlButtonResponse,
+                        stimulus: `
+                            <h3>Tap Speed Test</h3>
+                            <p>Tap the blue circle as quickly as you can for 5 seconds.</p>
+                        `,
+                        choices: ['Begin']
+                    },
+                    tapTrial,
+                    {
+                        type: jsPsychHtmlButtonResponse,
+                        stimulus: function() {
+                            const data = jsPsych.data.get().last(1).values()[0];
+                            return `
+                                <h3>Your Results:</h3>
+                                <p>Total Taps: ${data.taps}</p>
+                                <p>Speed: ${Math.round(data.taps_per_second * 100) / 100} taps/second</p>
+                            `;
+                        },
+                        choices: ['Continue']
+                    }
+                ]
+            };
+        }
+
+        // Create timeline
+        const timeline = [
+            {
+                type: jsPsychHtmlButtonResponse,
+                stimulus: `
+                    <h2>Memory & Tapping Test</h2>
+                    <p>This test includes:</p>
+                    <ul>
+                        <li>Pattern Memory Task (1 minute)</li>
+                        <li>Tap Speed Test (30 seconds)</li>
+                    </ul>
+                    <p>Total time: about 2 minutes</p>
+                `,
+                choices: ['Start Test']
+            },
+            createPatternTest(),
+            createTapTest(),
+            {
+                type: jsPsychHtmlButtonResponse,
+                stimulus: function() {
+                    const allData = jsPsych.data.get();
+                    const patternAcc = allData.filter({test_type: 'pattern_memory'}).select('accuracy').values[0];
+                    const tapSpeed = allData.filter({test_type: 'tap_speed'}).select('taps_per_second').values[0];
+                    
+                    return `
+                        <h2>Test Complete!</h2>
+                        <p>Pattern Memory Accuracy: ${Math.round(patternAcc * 100)}%</p>
+                        <p>Tap Speed: ${Math.round(tapSpeed * 100) / 100} taps/second</p>
+                        <p>Your results have been saved.</p>
+                        <p><a href="../" style="color: #2196F3;">Return to Test Selection</a></p>
+                    `;
+                },
+                choices: ['Finish']
+            }
+        ];
+
+        // Run the experiment
+        jsPsych.run(timeline);
+    </script>
+</body>
+</html>
