@@ -3,30 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COG Test</title>
-    <!-- Link to jsPsych Library and CSS -->
+    <title>N-Back Test</title>
+    <!-- Local jsPsych -->
     <script src="jspsych.js"></script>
     <link rel="stylesheet" href="jspsych.css">
-
-    <!-- Inline Styles -->
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f9f9f9;
             margin: 0;
             padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            background-color: #f4f4f4;
         }
         .jspsych-display-element {
-            font-size: 24px;
-            color: #333;
+            font-size: 48px;
             text-align: center;
-        }
-        p {
-            margin: 20px 0;
         }
     </style>
 </head>
@@ -35,51 +29,66 @@
         // Initialize jsPsych
         var jsPsych = initJsPsych({
             on_finish: function() {
-                jsPsych.data.displayData(); // Show collected data at the end
+                jsPsych.data.displayData(); // Display results at the end
             }
         });
 
-        // Define the Timeline
+        // Define the timeline
         var timeline = [];
 
         // Instructions
         var instructions = {
             type: jsPsychHtmlKeyboardResponse,
-            stimulus: "<p>Welcome to the COG Test!</p>" +
-                      "<p>Press 'R' for RED or 'B' for BLUE.</p>" +
-                      "<p>Press any key to begin.</p>"
+            stimulus: `
+                <p><strong>N-Back Test</strong></p>
+                <p>You will see a series of letters. Press the 'F' key if the current letter matches the one presented just before (1-back).</p>
+                <p>Press any key to begin.</p>
+            `
         };
         timeline.push(instructions);
 
-        // Cognitive Task Trial 1
-        var trial1 = {
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: "<p style='color: red; font-size: 48px;'>BLUE</p>",
-            choices: ['r', 'b'],
-            prompt: "<p>Press 'R' for RED or 'B' for BLUE.</p>",
-            data: { correct_response: 'r' }
-        };
-        timeline.push(trial1);
+        // Define N-Back trials
+        var letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']; // Pool of letters
+        var sequence = [];
+        var n_trials = 20;
 
-        // Cognitive Task Trial 2
-        var trial2 = {
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: "<p style='color: blue; font-size: 48px;'>RED</p>",
-            choices: ['r', 'b'],
-            prompt: "<p>Press 'R' for RED or 'B' for BLUE.</p>",
-            data: { correct_response: 'b' }
-        };
-        timeline.push(trial2);
+        // Generate letter sequence
+        for (let i = 0; i < n_trials; i++) {
+            if (i > 0 && Math.random() < 0.3) { // 30% chance the letter repeats (match)
+                sequence.push(sequence[i - 1]);
+            } else {
+                let new_letter = letters[Math.floor(Math.random() * letters.length)];
+                sequence.push(new_letter);
+            }
+        }
 
-        // Thank You Message
-        var thankYou = {
-            type: jsPsychHtmlKeyboardResponse,
-            stimulus: "<p>Thank you for completing the COG Test!</p>",
-            choices: jsPsych.NO_KEYS
-        };
-        timeline.push(thankYou);
+        // Create trials
+        for (let i = 0; i < sequence.length; i++) {
+            var trial = {
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: `<p>${sequence[i]}</p>`,
+                choices: ['f'],
+                data: {
+                    correct_response: (i > 0 && sequence[i] === sequence[i - 1]) ? 'f' : null, // Correct only if match
+                    trial_number: i
+                },
+                on_finish: function(data) {
+                    data.correct = data.response === data.correct_response;
+                },
+                trial_duration: 1000, // 1-second per trial
+                post_trial_gap: 500 // 0.5-second gap
+            };
+            timeline.push(trial);
+        }
 
-        // Run the Experiment
+        // Thank you screen
+        var end_message = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "<p>Thank you for participating!</p><p>Press any key to see your results.</p>"
+        };
+        timeline.push(end_message);
+
+        // Run the experiment
         jsPsych.run(timeline);
     </script>
 </body>
