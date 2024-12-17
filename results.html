@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Results History</title>
+    <script src="common/js/data-collection.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .result-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .result-card h3 {
+            margin-top: 0;
+            color: #2563eb;
+        }
+
+        .stats {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        .timestamp {
+            color: #64748b;
+            font-size: 0.9em;
+        }
+
+        .filter-section {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #e2e8f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #2563eb;
+            color: white;
+        }
+
+        .clear-btn {
+            padding: 8px 16px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Test Results History</h1>
+        <div class="filter-section">
+            <button class="filter-btn active" data-type="all">All Tests</button>
+            <button class="filter-btn" data-type="mobile_pattern">Pattern Memory</button>
+            <button class="filter-btn" data-type="nback_memory">N-Back</button>
+            <button class="filter-btn" data-type="quick_memory">Quick Memory</button>
+            <button class="clear-btn" onclick="clearResults()">Clear History</button>
+        </div>
+    </div>
+
+    <div id="results" class="results-grid"></div>
+
+    <script>
+        const dataCollector = new DataCollector();
+        
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+
+        function displayResults(type = 'all') {
+            const results = dataCollector.getLocalResults()
+                .filter(r => type === 'all' || r.testType === type)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (results.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="no-results">
+                        <h3>No test results found</h3>
+                        <p>Complete some tests to see your results here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            results.forEach(result => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                
+                let statsHtml = '';
+                if (result.summary) {
+                    if (result.summary.accuracy !== undefined) {
+                        statsHtml += `<p>Accuracy: ${result.summary.accuracy}%</p>`;
+                    }
+                    if (result.summary.averageRT !== undefined) {
+                        statsHtml += `<p>Average Response Time: ${result.summary.averageRT}ms</p>`;
+                    }
+                }
+
+                card.innerHTML = `
+                    <h3>${formatTestType(result.testType)}</h3>
+                    <div class="stats">
+                        ${statsHtml}
+                    </div>
+                    <div class="timestamp">
+                        ${formatDate(result.timestamp)}
+                    </div>
+                `;
+                
+                resultsDiv.appendChild(card);
+            });
+        }
+
+        function formatTestType(type) {
+            const types = {
+                mobile_pattern: 'Pattern Memory Test',
+                nback_memory: 'N-Back Memory Test',
+                quick_memory: 'Quick Memory Check'
+            };
+            return types[type] || type;
+        }
+
+        function clearResults() {
+            if (confirm('Are you sure you want to clear all local test results?')) {
+                dataCollector.clearLocalResults();
+                displayResults();
+            }
+        }
+
+        // Filter button handling
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                displayResults(this.dataset.type);
+            });
+        });
+
+        // Initial display
+        displayResults();
+    </script>
+</body>
+</html>
