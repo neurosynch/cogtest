@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COG Test</title>
+    <!-- Link to jsPsych Library and CSS -->
+    <script src="jspsych.js"></script>
+    <link rel="stylesheet" href="jspsych.css">
+
+    <!-- Inline Styles -->
     <style>
-        /* Inline CSS for jsPsych */
         body {
             font-family: Arial, sans-serif;
             background-color: #f9f9f9;
@@ -28,58 +32,55 @@
 </head>
 <body>
     <script>
-        // Lightweight jsPsych-like implementation
-        (function() {
-            const jsPsych = {
-                run: function(timeline) {
-                    let index = 0;
-                    const display = document.createElement('div');
-                    display.className = 'jspsych-display-element';
-                    document.body.appendChild(display);
+        // Initialize jsPsych
+        var jsPsych = initJsPsych({
+            on_finish: function() {
+                jsPsych.data.displayData(); // Show collected data at the end
+            }
+        });
 
-                    function showTrial() {
-                        if (index < timeline.length) {
-                            const trial = timeline[index];
-                            display.innerHTML = trial.stimulus;
+        // Define the Timeline
+        var timeline = [];
 
-                            document.onkeydown = (e) => {
-                                if (trial.choices.includes(e.key)) {
-                                    index++;
-                                    showTrial();
-                                }
-                            };
-                        } else {
-                            display.innerHTML = "<p>Experiment Complete! Thank you for participating.</p>";
-                        }
-                    }
+        // Instructions
+        var instructions = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "<p>Welcome to the COG Test!</p>" +
+                      "<p>Press 'R' for RED or 'B' for BLUE.</p>" +
+                      "<p>Press any key to begin.</p>"
+        };
+        timeline.push(instructions);
 
-                    showTrial();
-                }
-            };
+        // Cognitive Task Trial 1
+        var trial1 = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "<p style='color: red; font-size: 48px;'>BLUE</p>",
+            choices: ['r', 'b'],
+            prompt: "<p>Press 'R' for RED or 'B' for BLUE.</p>",
+            data: { correct_response: 'r' }
+        };
+        timeline.push(trial1);
 
-            // Define the experiment timeline
-            const timeline = [
-                {
-                    stimulus: "<p>Welcome to the COG Test!</p><p>Press 'R' for RED or 'B' for BLUE.</p><p>Press any key to start.</p>",
-                    choices: ['r', 'b', ' ']
-                },
-                {
-                    stimulus: "<p style='color: red; font-size: 48px;'>BLUE</p><p>Press 'R' for RED or 'B' for BLUE.</p>",
-                    choices: ['r', 'b']
-                },
-                {
-                    stimulus: "<p style='color: blue; font-size: 48px;'>RED</p><p>Press 'R' for RED or 'B' for BLUE.</p>",
-                    choices: ['r', 'b']
-                },
-                {
-                    stimulus: "<p>Thank you for completing the COG Test!</p>",
-                    choices: [' ']
-                }
-            ];
+        // Cognitive Task Trial 2
+        var trial2 = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "<p style='color: blue; font-size: 48px;'>RED</p>",
+            choices: ['r', 'b'],
+            prompt: "<p>Press 'R' for RED or 'B' for BLUE.</p>",
+            data: { correct_response: 'b' }
+        };
+        timeline.push(trial2);
 
-            // Run the experiment
-            jsPsych.run(timeline);
-        })();
+        // Thank You Message
+        var thankYou = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "<p>Thank you for completing the COG Test!</p>",
+            choices: jsPsych.NO_KEYS
+        };
+        timeline.push(thankYou);
+
+        // Run the Experiment
+        jsPsych.run(timeline);
     </script>
 </body>
 </html>
